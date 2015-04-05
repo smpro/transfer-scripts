@@ -1,4 +1,4 @@
-# -*-Shell-script-*-
+#!/bin/bash
 #
 # functions-storagemanager      This file contains functions to be used
 #                               by all storage manager shell scripts in
@@ -24,14 +24,20 @@ if [ ! -x $sets ]; then
 fi
 
 storagemanager_start () {
-    MESSAGE="Starting $prog:"
-    echo -n "$MESSAGE "
-    if [ -f /var/lock/subsys/$prog ]; then
-        echo -n 'already running! '; failure; echo
-        return 2
+    LOCKFILE=/var/lock/subsys/$prog
+    echo -n "Starting $prog: "
+    if [ -f $LOCKFILE ]; then
+        echo -n 'subsystem locked! '; failure; echo
+        if ! action "Is $prog running?" storagemanager_status -q $1; then
+            MESSAGE="Removing stale lockfile $LOCKFILE:"
+            action "$MESSAGE" rm $LOCKFILE || return $?
+        else
+            return 3
+        fi
     fi
-    action "Starting $prog:" $sets "start$1"
+    $sets "start$1" && success || failure
     RETVAL=$?
+    echo
     [ $RETVAL -eq 0 ] && touch /var/lock/subsys/$prog
     return $RETVAL
 }
